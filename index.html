@@ -12,14 +12,12 @@
     .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     h1{margin:0;font-size:22px}
     .muted{color:#666;font-size:13px}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-    @media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
     .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
     .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#f2f2f2}
     .pill.blue{background:#e8f1ff;color:#0b57d0}
     .pill.red{background:#ffe9e9;color:#c00000}
-    .score{font-size:34px;font-weight:900;text-align:center;margin:14px 0 6px}
+    .score{font-size:36px;font-weight:900;text-align:center;margin:10px 0}
     .center{text-align:center}
     table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
     th,td{padding:10px;border-bottom:1px solid #eee;text-align:center;font-size:14px}
@@ -31,16 +29,17 @@
     button{padding:10px 12px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:800;cursor:pointer}
     button.primary{background:#111;color:#fff;border-color:#111}
     .err{color:#b00020;font-weight:900;display:none;margin-top:10px}
-    .small{font-size:12px}
   </style>
 </head>
 
 <body>
   <div class="wrap">
+
+    <!-- Header -->
     <div class="top">
       <div>
         <h1>⚽ Fútbol 5 — Martes</h1>
-        <div class="muted">Link fijo para WhatsApp · se actualiza leyendo la planilla</div>
+        <div class="muted">Link fijo para WhatsApp · se actualiza automáticamente</div>
       </div>
       <div class="actions">
         <button id="btnRefresh" class="primary">Actualizar</button>
@@ -50,96 +49,76 @@
 
     <div id="err" class="err"></div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="row">
-          <div>
-            <span class="pill blue">Equipo Azul</span>
-            <div class="muted" id="azStats">—</div>
-          </div>
-          <div>
-            <span class="pill red">Equipo Rojo</span>
-            <div class="muted" id="roStats">—</div>
-          </div>
-        </div>
-
-        <div class="score" id="lastScore">—</div>
-        <div class="center muted" id="lastDate"></div>
-      </div>
-
-      <div class="card">
-        <div style="font-weight:900;margin-bottom:8px;">Cómo se carga</div>
-        <div class="muted">
-          Solo el admin actualiza la Google Sheet en 3 solapas:
-          <ul class="small">
-            <li><b>Partidos</b>: match_id, fecha, azul, rojo</li>
-            <li><b>Jugadores</b>: nombre</li>
-            <li><b>Participaciones</b>: match_id, nombre, equipo (Azul/Rojo)</li>
-          </ul>
-          Tip: en Participaciones usá validación de datos (dropdown) para evitar errores de tipeo.
-        </div>
-        <div class="muted small">Refresco automático cada 30s.</div>
-      </div>
-    </div>
-
+    <!-- CARD PRINCIPAL: Último partido + Estadística general -->
     <div class="card" style="margin-top:12px;">
       <div class="row">
-        <div style="font-weight:900;">Historial</div>
-        <div class="muted">Partidos: <span id="count">0</span></div>
+        <div>
+          <span class="pill blue">Equipo Azul</span>
+          <div class="muted" id="azStats">—</div>
+        </div>
+
+        <div class="center" style="flex:1;">
+          <div class="score" id="lastScore">—</div>
+          <div class="muted" id="lastDate"></div>
+        </div>
+
+        <div style="text-align:right;">
+          <span class="pill red">Equipo Rojo</span>
+          <div class="muted" id="roStats">—</div>
+        </div>
       </div>
-      <div style="margin-top:10px;overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Azul</th>
-              <th>Rojo</th>
-              <th>Resultado</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
+
+      <div style="height:12px;"></div>
+
+      <div class="row">
+        <div class="muted"><b>Partidos:</b> <span id="count">0</span></div>
+        <div class="muted"><b>Azul:</b> <span id="sumAzul">0</span> GF · <span id="sumAzulGC">0</span> GC · <span id="sumAzulDG">0</span> DG</div>
+        <div class="muted"><b>Rojo:</b> <span id="sumRojo">0</span> GF · <span id="sumRojoGC">0</span> GC · <span id="sumRojoDG">0</span> DG</div>
       </div>
     </div>
 
+    <!-- HISTORIAL -->
     <div class="card" style="margin-top:12px;">
-      <div class="row">
-        <div style="font-weight:900;">Estadísticas de jugadores</div>
-        <div class="muted small">Calculado por participaciones (pueden cambiar de equipo)</div>
-      </div>
-      <div style="margin-top:10px;overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th class="left">Jugador</th>
-              <th>PJ</th>
-              <th>V</th>
-              <th>E</th>
-              <th>D</th>
-            </tr>
-          </thead>
-          <tbody id="playersTbody"></tbody>
-        </table>
-      </div>
+      <div style="font-weight:900;margin-bottom:8px;">Historial</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Azul</th>
+            <th>Rojo</th>
+            <th>Resultado</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </div>
+
+    <!-- ESTADÍSTICAS DE JUGADORES -->
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:900;margin-bottom:8px;">Estadísticas de jugadores</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Jugador</th>
+            <th>PJ</th>
+            <th>V</th>
+            <th>E</th>
+            <th>D</th>
+          </tr>
+        </thead>
+        <tbody id="playersTbody"></tbody>
+      </table>
+    </div>
+
   </div>
 
   <script>
     // ============================
     // PEGÁ ACÁ TUS 3 LINKS CSV
-    // (Archivo → Publicar en la web → CSV)
     // ============================
-    const CSV_PARTIDOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=0&single=true&output=csv";
-    const CSV_JUGADORES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=52345791&single=true&output=csv";
-    const CSV_PARTICIPACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=794461532&single=true&output=csv";
-
-    function showError(msg){
-      const el = document.getElementById("err");
-      if(!el) return;
-      if(!msg){ el.style.display="none"; el.textContent=""; return; }
-      el.style.display="block";
-      el.textContent = msg;
-    }
+    const CSV_PARTIDOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pubhtml?gid=0&single=true";
+    const CSV_JUGADORES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pubhtml?gid=52345791&single=true";
+    const CSV_PARTICIPACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pubhtml?gid=794461532&single=true";
 
     function cacheBuster(url){
       return url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
@@ -150,211 +129,130 @@
       return await res.text();
     }
 
-    // CSV simple (OK si no usás comas dentro de celdas)
     function parseCSV(text){
       const lines = text.trim().split(/\r?\n/);
       if(lines.length < 2) return [];
       const header = lines[0].split(",").map(s=>s.trim());
-      const rows = [];
-      for(let i=1;i<lines.length;i++){
-        if(!lines[i].trim()) continue;
-        const cols = lines[i].split(",");
-        const obj = {};
-        header.forEach((h,idx)=> obj[h] = (cols[idx] ?? "").trim());
-        rows.push(obj);
-      }
-      return rows;
-    }
-
-    function toTime(fechaStr){
-      const s = (fechaStr || "").trim();
-      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); // YYYY-MM-DD
-      if(m1){
-        return new Date(Number(m1[1]), Number(m1[2])-1, Number(m1[3])).getTime();
-      }
-      const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // D/M/YYYY
-      if(m2){
-        return new Date(Number(m2[3]), Number(m2[2])-1, Number(m2[1])).getTime();
-      }
-      const t = Date.parse(s);
-      return Number.isFinite(t) ? t : 0;
-    }
-
-    function resultado(azul, rojo){
-      if(azul > rojo) return "Gana Azul";
-      if(azul < rojo) return "Gana Rojo";
-      return "Empate";
-    }
-
-    function normalizeTeam(s){
-      const t = (s || "").trim().toLowerCase();
-      if(t === "azul") return "Azul";
-      if(t === "rojo") return "Rojo";
-      return "";
-    }
-
-    function outcomeForTeam(azul, rojo, team){ // "W/D/L" según el equipo del jugador
-      if(azul === rojo) return "D";
-      const azulWins = azul > rojo;
-      if(team === "Azul") return azulWins ? "W" : "L";
-      if(team === "Rojo") return azulWins ? "L" : "W";
-      return "D";
-    }
-
-    function computeTeamStats(matches){
-      const s = { azul:{W:0,D:0,L:0}, rojo:{W:0,D:0,L:0} };
-      for(const m of matches){
-        if(m.azul > m.rojo){ s.azul.W++; s.rojo.L++; }
-        else if(m.azul < m.rojo){ s.rojo.W++; s.azul.L++; }
-        else { s.azul.D++; s.rojo.D++; }
-      }
-      return s;
-    }
-
-    // ✅ Stats por jugador usando Participaciones por NOMBRE
-    function computePlayerStats(matches, players, parts){
-      const matchById = new Map();
-      for(const m of matches) matchById.set(m.match_id, m);
-
-      // Inicializar stats a partir del maestro Jugadores
-      const stats = new Map(); // nombreKey -> stats
-      for(const p of players){
-        const nombre = (p.nombre || "").trim();
-        if(!nombre) continue;
-        const key = nombre.toLowerCase();
-        stats.set(key, { nombre, PJ:0, W:0, D:0, L:0 });
-      }
-
-      // Aplicar participaciones
-      for(const r of parts){
-        const match = matchById.get(r.match_id);
-        if(!match) continue;
-
-        const nombreKey = (r.nombre || "").trim().toLowerCase();
-        const st = stats.get(nombreKey);
-        if(!st) continue; // si el nombre no está en Jugadores, lo ignora
-
-        const team = normalizeTeam(r.equipo);
-        if(!team) continue;
-
-        st.PJ += 1;
-        const o = outcomeForTeam(match.azul, match.rojo, team);
-        if(o === "W") st.W += 1;
-        else if(o === "L") st.L += 1;
-        else st.D += 1;
-      }
-
-      // Orden: Victorias ↓, PJ ↓, Empates ↓ (opcional), Nombre ↑
-      return Array.from(stats.values()).sort((a,b)=>{
-        if(b.W !== a.W) return b.W - a.W;
-        if(b.PJ !== a.PJ) return b.PJ - a.PJ;
-        if(b.D !== a.D) return b.D - a.D;
-        return a.nombre.localeCompare(b.nombre);
+      return lines.slice(1).filter(l=>l.trim()).map(line=>{
+        const cols = line.split(",");
+        const o = {};
+        header.forEach((h,i)=>o[h]=(cols[i]||"").trim());
+        return o;
       });
     }
 
-    function renderMatchesTable(matches){
-      const tbody = document.getElementById("tbody");
-      tbody.innerHTML = "";
-      for(const m of matches){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${m.fecha}</td>
-          <td class="azul">${m.azul}</td>
-          <td class="rojo">${m.rojo}</td>
-          <td>${resultado(m.azul,m.rojo)}</td>
-        `;
-        tbody.appendChild(tr);
+    function toTime(f){
+      if(!f) return 0;
+      if(/^\d{4}-\d{2}-\d{2}$/.test(f)){
+        const [y,m,d]=f.split("-").map(Number);
+        return new Date(y,m-1,d).getTime();
       }
+      if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(f)){
+        const [d,m,y]=f.split("/").map(Number);
+        return new Date(y,m-1,d).getTime();
+      }
+      return Date.parse(f)||0;
     }
 
-    function renderPlayersTable(playerStats){
-      const tbody = document.getElementById("playersTbody");
-      tbody.innerHTML = "";
-      for(const s of playerStats){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="left">${s.nombre}</td>
-          <td>${s.PJ}</td>
-          <td>${s.W}</td>
-          <td>${s.D}</td>
-          <td>${s.L}</td>
-        `;
-        tbody.appendChild(tr);
-      }
+    function resultado(a,r){
+      if(a>r) return "Gana Azul";
+      if(a<r) return "Gana Rojo";
+      return "Empate";
+    }
+
+    function normalizeTeam(t){
+      t=(t||"").toLowerCase();
+      return t==="azul"?"Azul":t==="rojo"?"Rojo":"";
+    }
+
+    function outcomeForTeam(a,r,team){
+      if(a===r) return "D";
+      const azulWins=a>r;
+      return team==="Azul"?(azulWins?"W":"L"):(azulWins?"L":"W");
     }
 
     async function load(){
-      try{
-        showError("");
+      const [pTxt,jTxt,paTxt]=await Promise.all([
+        fetchText(CSV_PARTIDOS),
+        fetchText(CSV_JUGADORES),
+        fetchText(CSV_PARTICIPACIONES),
+      ]);
 
-        if([CSV_PARTIDOS, CSV_JUGADORES, CSV_PARTICIPACIONES].some(u => !u || u.includes("PEGAR_"))){
-          showError("Faltan pegar los 3 links CSV (Partidos, Jugadores, Participaciones) en index.html.");
-          return;
-        }
+      const partidos=parseCSV(pTxt).map(r=>({
+        match_id:r.match_id,
+        fecha:r.fecha,
+        azul:+r.azul,
+        rojo:+r.rojo
+      })).filter(m=>m.match_id&&m.fecha).sort((a,b)=>toTime(b.fecha)-toTime(a.fecha));
 
-        const [tPartidos, tJugadores, tParts] = await Promise.all([
-          fetchText(CSV_PARTIDOS),
-          fetchText(CSV_JUGADORES),
-          fetchText(CSV_PARTICIPACIONES),
-        ]);
+      const jugadores=parseCSV(jTxt).map(r=>r.nombre).filter(Boolean);
 
-        const partidosRaw = parseCSV(tPartidos);
-        const jugadoresRaw = parseCSV(tJugadores);
-        const partsRaw = parseCSV(tParts);
+      const parts=parseCSV(paTxt).map(r=>({
+        match_id:r.match_id,
+        nombre:r.nombre,
+        equipo:normalizeTeam(r.equipo)
+      })).filter(r=>r.match_id&&r.nombre&&r.equipo);
 
-        const matches = partidosRaw.map(r => ({
-          match_id: (r.match_id || "").trim(),
-          fecha: (r.fecha || "").trim(),
-          azul: Number(r.azul || 0),
-          rojo: Number(r.rojo || 0),
-        })).filter(m =>
-          m.match_id && m.fecha && Number.isFinite(m.azul) && Number.isFinite(m.rojo)
-        );
-
-        // Orden por fecha REAL (desc)
-        matches.sort((a,b)=> toTime(b.fecha) - toTime(a.fecha));
-
-        const players = jugadoresRaw.map(r => ({
-          nombre: (r.nombre || "").trim()
-        })).filter(p => p.nombre);
-
-        const parts = partsRaw.map(r => ({
-          match_id: (r.match_id || "").trim(),
-          nombre: (r.nombre || "").trim(),
-          equipo: (r.equipo || "").trim(),
-        })).filter(r => r.match_id && r.nombre && r.equipo);
-
-        // UI: stats equipos + último partido
-        document.getElementById("count").textContent = matches.length;
-
-        const teamS = computeTeamStats(matches);
-        document.getElementById("azStats").textContent = `V ${teamS.azul.W} · E ${teamS.azul.D} · D ${teamS.azul.L}`;
-        document.getElementById("roStats").textContent = `V ${teamS.rojo.W} · E ${teamS.rojo.D} · D ${teamS.rojo.L}`;
-
-        const last = matches[0];
-        document.getElementById("lastScore").textContent = last ? `🔵 ${last.azul} - ${last.rojo} 🔴` : "—";
-        document.getElementById("lastDate").textContent = last ? last.fecha : "";
-
-        renderMatchesTable(matches);
-
-        const playerStats = computePlayerStats(matches, players, parts);
-        renderPlayersTable(playerStats);
-
-      } catch(e){
-        showError("No pude leer la planilla. Verificá que las 3 solapas estén publicadas como CSV y accesibles en lectura.");
+      // Stats equipos
+      let az={W:0,D:0,L:0,GF:0,GC:0}, ro={W:0,D:0,L:0,GF:0,GC:0};
+      for(const m of partidos){
+        az.GF+=m.azul; az.GC+=m.rojo;
+        ro.GF+=m.rojo; ro.GC+=m.azul;
+        if(m.azul>m.rojo){az.W++;ro.L++;}
+        else if(m.azul<m.rojo){ro.W++;az.L++;}
+        else{az.D++;ro.D++;}
       }
+
+      document.getElementById("count").textContent=partidos.length;
+      document.getElementById("azStats").textContent=`V ${az.W} · E ${az.D} · D ${az.L}`;
+      document.getElementById("roStats").textContent=`V ${ro.W} · E ${ro.D} · D ${ro.L}`;
+      document.getElementById("sumAzul").textContent=az.GF;
+      document.getElementById("sumAzulGC").textContent=az.GC;
+      document.getElementById("sumAzulDG").textContent=az.GF-az.GC;
+      document.getElementById("sumRojo").textContent=ro.GF;
+      document.getElementById("sumRojoGC").textContent=ro.GC;
+      document.getElementById("sumRojoDG").textContent=ro.GF-ro.GC;
+
+      const last=partidos[0];
+      document.getElementById("lastScore").textContent=last?`🔵 ${last.azul} - ${last.rojo} 🔴`:"—";
+      document.getElementById("lastDate").textContent=last?last.fecha:"";
+
+      // Historial
+      const tb=document.getElementById("tbody");
+      tb.innerHTML="";
+      partidos.forEach(m=>{
+        tb.innerHTML+=`<tr><td>${m.fecha}</td><td class="azul">${m.azul}</td><td class="rojo">${m.rojo}</td><td>${resultado(m.azul,m.rojo)}</td></tr>`;
+      });
+
+      // Stats jugadores
+      const stats={};
+      jugadores.forEach(n=>stats[n.toLowerCase()]={nombre:n,PJ:0,W:0,D:0,L:0});
+      const byMatch=new Map(partidos.map(m=>[m.match_id,m]));
+      parts.forEach(p=>{
+        const s=stats[p.nombre.toLowerCase()];
+        const m=byMatch.get(p.match_id);
+        if(!s||!m) return;
+        s.PJ++;
+        const o=outcomeForTeam(m.azul,m.rojo,p.equipo);
+        if(o==="W")s.W++; else if(o==="L")s.L++; else s.D++;
+      });
+
+      const pt=document.getElementById("playersTbody");
+      pt.innerHTML="";
+      Object.values(stats).sort((a,b)=>b.W-a.W||b.PJ-a.PJ||a.nombre.localeCompare(b.nombre))
+        .forEach(s=>{
+          pt.innerHTML+=`<tr><td class="left">${s.nombre}</td><td>${s.PJ}</td><td>${s.W}</td><td>${s.D}</td><td>${s.L}</td></tr>`;
+        });
     }
 
-    document.getElementById("btnRefresh").addEventListener("click", load);
-    document.getElementById("btnShare").addEventListener("click", () => {
-      const link = window.location.href.split("#")[0];
-      const text = `⚽ Fútbol 5 (Martes) — resultados y stats:\n${link}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-    });
+    document.getElementById("btnRefresh").onclick=load;
+    document.getElementById("btnShare").onclick=()=>{
+      const link=location.href.split("#")[0];
+      window.open(`https://wa.me/?text=${encodeURIComponent("⚽ Fútbol 5 — Resultados:\n"+link)}`,"_blank");
+    };
 
     load();
-    setInterval(load, 30000);
+    setInterval(load,30000);
   </script>
 </body>
 </html>
