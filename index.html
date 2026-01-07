@@ -4,15 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Fútbol 5 — Martes</title>
+
   <style>
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:#f5f6f8;color:#111}
-    .wrap{max-width:860px;margin:0 auto;padding:16px}
-    .top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     h1{margin:0;font-size:22px}
     .muted{color:#666;font-size:13px}
     .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-    @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+    @media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
     .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
     .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#f2f2f2}
@@ -23,12 +24,14 @@
     table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
     th,td{padding:10px;border-bottom:1px solid #eee;text-align:center;font-size:14px}
     th{background:#f0f0f0}
+    .left{text-align:left}
     .azul{color:#0b57d0;font-weight:900}
     .rojo{color:#c00000;font-weight:900}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     button{padding:10px 12px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:800;cursor:pointer}
     button.primary{background:#111;color:#fff;border-color:#111}
     .err{color:#b00020;font-weight:900;display:none;margin-top:10px}
+    .small{font-size:12px}
   </style>
 </head>
 
@@ -37,7 +40,7 @@
     <div class="top">
       <div>
         <h1>⚽ Fútbol 5 — Martes</h1>
-        <div class="muted">Link fijo para WhatsApp · se actualiza solo leyendo la planilla</div>
+        <div class="muted">Link fijo para WhatsApp · se actualiza leyendo la planilla</div>
       </div>
       <div class="actions">
         <button id="btnRefresh" class="primary">Actualizar</button>
@@ -67,13 +70,15 @@
       <div class="card">
         <div style="font-weight:900;margin-bottom:8px;">Cómo se carga</div>
         <div class="muted">
-          Solo el admin actualiza la <b>Google Sheet</b> (Partidos: fecha, azul, rojo).<br>
-          Acá se ve en tiempo real (refresco automático cada 30s).
+          Solo el admin actualiza la Google Sheet en 3 solapas:
+          <ul class="small">
+            <li><b>Partidos</b>: match_id, fecha, azul, rojo</li>
+            <li><b>Jugadores</b>: nombre</li>
+            <li><b>Participaciones</b>: match_id, nombre, equipo (Azul/Rojo)</li>
+          </ul>
+          Tip: en Participaciones usá validación de datos (dropdown) para evitar errores de tipeo.
         </div>
-        <div style="height:10px;"></div>
-        <div class="muted">
-          Tip: cargá una fila nueva por partido (fecha YYYY-MM-DD).
-        </div>
+        <div class="muted small">Refresco automático cada 30s.</div>
       </div>
     </div>
 
@@ -96,99 +101,256 @@
         </table>
       </div>
     </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="row">
+        <div style="font-weight:900;">Estadísticas de jugadores</div>
+        <div class="muted small">Calculado por participaciones (pueden cambiar de equipo)</div>
+      </div>
+      <div style="margin-top:10px;overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th class="left">Jugador</th>
+              <th>PJ</th>
+              <th>V</th>
+              <th>E</th>
+              <th>D</th>
+            </tr>
+          </thead>
+          <tbody id="playersTbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
-    // 1) PEGÁ ACÁ tu link CSV publicado (Archivo → Publicar en la web → CSV)
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=0&single=true&output=csv";
+    // ============================
+    // PEGÁ ACÁ TUS 3 LINKS CSV
+    // (Archivo → Publicar en la web → CSV)
+    // ============================
+    const CSV_PARTIDOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=0&single=true&output=csv";
+    const CSV_JUGADORES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=52345791&single=true&output=csv";
+    const CSV_PARTICIPACIONES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQX5_EDn03DZsAti9riNqRkPppghlPrLX1zvXGWfBSbU5zhQxGEUCibiO-LduvpvESPQZfea6FSUfxu/pub?gid=794461532&single=true&output=csv";
 
     function showError(msg){
       const el = document.getElementById("err");
+      if(!el) return;
       if(!msg){ el.style.display="none"; el.textContent=""; return; }
       el.style.display="block";
       el.textContent = msg;
     }
 
-    function resultado(a,r){
-      if(a>r) return "Gana Azul";
-      if(a<r) return "Gana Rojo";
+    function cacheBuster(url){
+      return url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+    }
+
+    async function fetchText(url){
+      const res = await fetch(cacheBuster(url), { cache:"no-store" });
+      return await res.text();
+    }
+
+    // CSV simple (OK si no usás comas dentro de celdas)
+    function parseCSV(text){
+      const lines = text.trim().split(/\r?\n/);
+      if(lines.length < 2) return [];
+      const header = lines[0].split(",").map(s=>s.trim());
+      const rows = [];
+      for(let i=1;i<lines.length;i++){
+        if(!lines[i].trim()) continue;
+        const cols = lines[i].split(",");
+        const obj = {};
+        header.forEach((h,idx)=> obj[h] = (cols[idx] ?? "").trim());
+        rows.push(obj);
+      }
+      return rows;
+    }
+
+    function toTime(fechaStr){
+      const s = (fechaStr || "").trim();
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); // YYYY-MM-DD
+      if(m1){
+        return new Date(Number(m1[1]), Number(m1[2])-1, Number(m1[3])).getTime();
+      }
+      const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // D/M/YYYY
+      if(m2){
+        return new Date(Number(m2[3]), Number(m2[2])-1, Number(m2[1])).getTime();
+      }
+      const t = Date.parse(s);
+      return Number.isFinite(t) ? t : 0;
+    }
+
+    function resultado(azul, rojo){
+      if(azul > rojo) return "Gana Azul";
+      if(azul < rojo) return "Gana Rojo";
       return "Empate";
     }
 
-    function computeStats(matches){
+    function normalizeTeam(s){
+      const t = (s || "").trim().toLowerCase();
+      if(t === "azul") return "Azul";
+      if(t === "rojo") return "Rojo";
+      return "";
+    }
+
+    function outcomeForTeam(azul, rojo, team){ // "W/D/L" según el equipo del jugador
+      if(azul === rojo) return "D";
+      const azulWins = azul > rojo;
+      if(team === "Azul") return azulWins ? "W" : "L";
+      if(team === "Rojo") return azulWins ? "L" : "W";
+      return "D";
+    }
+
+    function computeTeamStats(matches){
       const s = { azul:{W:0,D:0,L:0}, rojo:{W:0,D:0,L:0} };
       for(const m of matches){
-        if(m.azul>m.rojo){ s.azul.W++; s.rojo.L++; }
-        else if(m.azul<m.rojo){ s.rojo.W++; s.azul.L++; }
+        if(m.azul > m.rojo){ s.azul.W++; s.rojo.L++; }
+        else if(m.azul < m.rojo){ s.rojo.W++; s.azul.L++; }
         else { s.azul.D++; s.rojo.D++; }
       }
       return s;
     }
 
-    function parseCSV(text){
-      const lines = text.trim().split(/\r?\n/);
-      if(lines.length < 2) return [];
-      // header esperado: fecha,azul,rojo (pero toleramos mayúsculas)
-      const out = [];
-      for(let i=1;i<lines.length;i++){
-        const cols = lines[i].split(",");
-        const fecha = (cols[0]||"").trim();
-        const azul = Number((cols[1]||"").trim());
-        const rojo = Number((cols[2]||"").trim());
-        if(!fecha || !Number.isFinite(azul) || !Number.isFinite(rojo)) continue;
-        out.push({ fecha, azul, rojo });
+    // ✅ Stats por jugador usando Participaciones por NOMBRE
+    function computePlayerStats(matches, players, parts){
+      const matchById = new Map();
+      for(const m of matches) matchById.set(m.match_id, m);
+
+      // Inicializar stats a partir del maestro Jugadores
+      const stats = new Map(); // nombreKey -> stats
+      for(const p of players){
+        const nombre = (p.nombre || "").trim();
+        if(!nombre) continue;
+        const key = nombre.toLowerCase();
+        stats.set(key, { nombre, PJ:0, W:0, D:0, L:0 });
       }
-      // ordenar desc por fecha
-      out.sort((a,b)=> (b.fecha||"").localeCompare(a.fecha||""));
-      return out;
+
+      // Aplicar participaciones
+      for(const r of parts){
+        const match = matchById.get(r.match_id);
+        if(!match) continue;
+
+        const nombreKey = (r.nombre || "").trim().toLowerCase();
+        const st = stats.get(nombreKey);
+        if(!st) continue; // si el nombre no está en Jugadores, lo ignora
+
+        const team = normalizeTeam(r.equipo);
+        if(!team) continue;
+
+        st.PJ += 1;
+        const o = outcomeForTeam(match.azul, match.rojo, team);
+        if(o === "W") st.W += 1;
+        else if(o === "L") st.L += 1;
+        else st.D += 1;
+      }
+
+      // Orden: Victorias ↓, PJ ↓, Empates ↓ (opcional), Nombre ↑
+      return Array.from(stats.values()).sort((a,b)=>{
+        if(b.W !== a.W) return b.W - a.W;
+        if(b.PJ !== a.PJ) return b.PJ - a.PJ;
+        if(b.D !== a.D) return b.D - a.D;
+        return a.nombre.localeCompare(b.nombre);
+      });
+    }
+
+    function renderMatchesTable(matches){
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = "";
+      for(const m of matches){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${m.fecha}</td>
+          <td class="azul">${m.azul}</td>
+          <td class="rojo">${m.rojo}</td>
+          <td>${resultado(m.azul,m.rojo)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderPlayersTable(playerStats){
+      const tbody = document.getElementById("playersTbody");
+      tbody.innerHTML = "";
+      for(const s of playerStats){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="left">${s.nombre}</td>
+          <td>${s.PJ}</td>
+          <td>${s.W}</td>
+          <td>${s.D}</td>
+          <td>${s.L}</td>
+        `;
+        tbody.appendChild(tr);
+      }
     }
 
     async function load(){
       try{
         showError("");
-        if(!CSV_URL || CSV_URL.includes("PEGAR_AQUI")) {
-          showError("Falta pegar el CSV_URL en el código (index.html).");
+
+        if([CSV_PARTIDOS, CSV_JUGADORES, CSV_PARTICIPACIONES].some(u => !u || u.includes("PEGAR_"))){
+          showError("Faltan pegar los 3 links CSV (Partidos, Jugadores, Participaciones) en index.html.");
           return;
         }
-        // cache-buster para que WhatsApp/Chrome no te muestren viejo
-        const url = CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
-        const res = await fetch(url, { cache:"no-store" });
-        const text = await res.text();
-        const matches = parseCSV(text);
 
+        const [tPartidos, tJugadores, tParts] = await Promise.all([
+          fetchText(CSV_PARTIDOS),
+          fetchText(CSV_JUGADORES),
+          fetchText(CSV_PARTICIPACIONES),
+        ]);
+
+        const partidosRaw = parseCSV(tPartidos);
+        const jugadoresRaw = parseCSV(tJugadores);
+        const partsRaw = parseCSV(tParts);
+
+        const matches = partidosRaw.map(r => ({
+          match_id: (r.match_id || "").trim(),
+          fecha: (r.fecha || "").trim(),
+          azul: Number(r.azul || 0),
+          rojo: Number(r.rojo || 0),
+        })).filter(m =>
+          m.match_id && m.fecha && Number.isFinite(m.azul) && Number.isFinite(m.rojo)
+        );
+
+        // Orden por fecha REAL (desc)
+        matches.sort((a,b)=> toTime(b.fecha) - toTime(a.fecha));
+
+        const players = jugadoresRaw.map(r => ({
+          nombre: (r.nombre || "").trim()
+        })).filter(p => p.nombre);
+
+        const parts = partsRaw.map(r => ({
+          match_id: (r.match_id || "").trim(),
+          nombre: (r.nombre || "").trim(),
+          equipo: (r.equipo || "").trim(),
+        })).filter(r => r.match_id && r.nombre && r.equipo);
+
+        // UI: stats equipos + último partido
         document.getElementById("count").textContent = matches.length;
 
-        const s = computeStats(matches);
-        document.getElementById("azStats").textContent = `V ${s.azul.W} · E ${s.azul.D} · D ${s.azul.L}`;
-        document.getElementById("roStats").textContent = `V ${s.rojo.W} · E ${s.rojo.D} · D ${s.rojo.L}`;
+        const teamS = computeTeamStats(matches);
+        document.getElementById("azStats").textContent = `V ${teamS.azul.W} · E ${teamS.azul.D} · D ${teamS.azul.L}`;
+        document.getElementById("roStats").textContent = `V ${teamS.rojo.W} · E ${teamS.rojo.D} · D ${teamS.rojo.L}`;
 
         const last = matches[0];
         document.getElementById("lastScore").textContent = last ? `🔵 ${last.azul} - ${last.rojo} 🔴` : "—";
         document.getElementById("lastDate").textContent = last ? last.fecha : "";
 
-        const tbody = document.getElementById("tbody");
-        tbody.innerHTML = "";
-        for(const m of matches){
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${m.fecha}</td>
-            <td class="azul">${m.azul}</td>
-            <td class="rojo">${m.rojo}</td>
-            <td>${resultado(m.azul,m.rojo)}</td>
-          `;
-          tbody.appendChild(tr);
-        }
+        renderMatchesTable(matches);
+
+        const playerStats = computePlayerStats(matches, players, parts);
+        renderPlayersTable(playerStats);
+
       } catch(e){
-        showError("No pude leer la planilla. Verificá que esté publicada como CSV y con acceso de lectura.");
+        showError("No pude leer la planilla. Verificá que las 3 solapas estén publicadas como CSV y accesibles en lectura.");
       }
     }
 
     document.getElementById("btnRefresh").addEventListener("click", load);
     document.getElementById("btnShare").addEventListener("click", () => {
       const link = window.location.href.split("#")[0];
-      const text = `⚽ Fútbol 5 (Martes) — resultados siempre actualizados:\n${link}`;
-      const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(wa, "_blank");
+      const text = `⚽ Fútbol 5 (Martes) — resultados y stats:\n${link}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     });
 
     load();
