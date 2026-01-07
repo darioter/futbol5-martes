@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fútbol 5 — Martes</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:#f5f6f8;color:#111}
+    .wrap{max-width:860px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    h1{margin:0;font-size:22px}
+    .muted{color:#666;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#f2f2f2}
+    .pill.blue{background:#e8f1ff;color:#0b57d0}
+    .pill.red{background:#ffe9e9;color:#c00000}
+    .score{font-size:34px;font-weight:900;text-align:center;margin:14px 0 6px}
+    .center{text-align:center}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:center;font-size:14px}
+    th{background:#f0f0f0}
+    .azul{color:#0b57d0;font-weight:900}
+    .rojo{color:#c00000;font-weight:900}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:10px 12px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:800;cursor:pointer}
+    button.primary{background:#111;color:#fff;border-color:#111}
+    .err{color:#b00020;font-weight:900;display:none;margin-top:10px}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>⚽ Fútbol 5 — Martes</h1>
+        <div class="muted">Link fijo para WhatsApp · se actualiza solo leyendo la planilla</div>
+      </div>
+      <div class="actions">
+        <button id="btnRefresh" class="primary">Actualizar</button>
+        <button id="btnShare">Compartir link</button>
+      </div>
+    </div>
+
+    <div id="err" class="err"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row">
+          <div>
+            <span class="pill blue">Equipo Azul</span>
+            <div class="muted" id="azStats">—</div>
+          </div>
+          <div>
+            <span class="pill red">Equipo Rojo</span>
+            <div class="muted" id="roStats">—</div>
+          </div>
+        </div>
+
+        <div class="score" id="lastScore">—</div>
+        <div class="center muted" id="lastDate"></div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:900;margin-bottom:8px;">Cómo se carga</div>
+        <div class="muted">
+          Solo el admin actualiza la <b>Google Sheet</b> (Partidos: fecha, azul, rojo).<br>
+          Acá se ve en tiempo real (refresco automático cada 30s).
+        </div>
+        <div style="height:10px;"></div>
+        <div class="muted">
+          Tip: cargá una fila nueva por partido (fecha YYYY-MM-DD).
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="row">
+        <div style="font-weight:900;">Historial</div>
+        <div class="muted">Partidos: <span id="count">0</span></div>
+      </div>
+      <div style="margin-top:10px;overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Azul</th>
+              <th>Rojo</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1) PEGÁ ACÁ tu link CSV publicado (Archivo → Publicar en la web → CSV)
+    const CSV_URL = "PEGAR_AQUI_TU_LINK_CSV";
+
+    function showError(msg){
+      const el = document.getElementById("err");
+      if(!msg){ el.style.display="none"; el.textContent=""; return; }
+      el.style.display="block";
+      el.textContent = msg;
+    }
+
+    function resultado(a,r){
+      if(a>r) return "Gana Azul";
+      if(a<r) return "Gana Rojo";
+      return "Empate";
+    }
+
+    function computeStats(matches){
+      const s = { azul:{W:0,D:0,L:0}, rojo:{W:0,D:0,L:0} };
+      for(const m of matches){
+        if(m.azul>m.rojo){ s.azul.W++; s.rojo.L++; }
+        else if(m.azul<m.rojo){ s.rojo.W++; s.azul.L++; }
+        else { s.azul.D++; s.rojo.D++; }
+      }
+      return s;
+    }
+
+    function parseCSV(text){
+      const lines = text.trim().split(/\r?\n/);
+      if(lines.length < 2) return [];
+      // header esperado: fecha,azul,rojo (pero toleramos mayúsculas)
+      const out = [];
+      for(let i=1;i<lines.length;i++){
+        const cols = lines[i].split(",");
+        const fecha = (cols[0]||"").trim();
+        const azul = Number((cols[1]||"").trim());
+        const rojo = Number((cols[2]||"").trim());
+        if(!fecha || !Number.isFinite(azul) || !Number.isFinite(rojo)) continue;
+        out.push({ fecha, azul, rojo });
+      }
+      // ordenar desc por fecha
+      out.sort((a,b)=> (b.fecha||"").localeCompare(a.fecha||""));
+      return out;
+    }
+
+    async function load(){
+      try{
+        showError("");
+        if(!CSV_URL || CSV_URL.includes("PEGAR_AQUI")) {
+          showError("Falta pegar el CSV_URL en el código (index.html).");
+          return;
+        }
+        // cache-buster para que WhatsApp/Chrome no te muestren viejo
+        const url = CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+        const res = await fetch(url, { cache:"no-store" });
+        const text = await res.text();
+        const matches = parseCSV(text);
+
+        document.getElementById("count").textContent = matches.length;
+
+        const s = computeStats(matches);
+        document.getElementById("azStats").textContent = `V ${s.azul.W} · E ${s.azul.D} · D ${s.azul.L}`;
+        document.getElementById("roStats").textContent = `V ${s.rojo.W} · E ${s.rojo.D} · D ${s.rojo.L}`;
+
+        const last = matches[0];
+        document.getElementById("lastScore").textContent = last ? `🔵 ${last.azul} - ${last.rojo} 🔴` : "—";
+        document.getElementById("lastDate").textContent = last ? last.fecha : "";
+
+        const tbody = document.getElementById("tbody");
+        tbody.innerHTML = "";
+        for(const m of matches){
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${m.fecha}</td>
+            <td class="azul">${m.azul}</td>
+            <td class="rojo">${m.rojo}</td>
+            <td>${resultado(m.azul,m.rojo)}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      } catch(e){
+        showError("No pude leer la planilla. Verificá que esté publicada como CSV y con acceso de lectura.");
+      }
+    }
+
+    document.getElementById("btnRefresh").addEventListener("click", load);
+    document.getElementById("btnShare").addEventListener("click", () => {
+      const link = window.location.href.split("#")[0];
+      const text = `⚽ Fútbol 5 (Martes) — resultados siempre actualizados:\n${link}`;
+      const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(wa, "_blank");
+    });
+
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>
